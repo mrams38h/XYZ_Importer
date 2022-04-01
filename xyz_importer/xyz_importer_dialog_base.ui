@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>890</width>
-    <height>832</height>
+    <height>998</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <property name="geometry">
     <rect>
      <x>530</x>
-     <y>790</y>
+     <y>950</y>
      <width>341</width>
      <height>32</height>
     </rect>
@@ -85,6 +85,9 @@
    </property>
    <property name="text">
     <string>All in one Layer</string>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
    </property>
   </widget>
   <widget class="QCheckBox" name="check_seperate">
@@ -255,9 +258,9 @@
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>580</y>
+     <y>630</y>
      <width>841</width>
-     <height>181</height>
+     <height>131</height>
     </rect>
    </property>
    <property name="widgetResizable">
@@ -269,7 +272,7 @@
       <x>0</x>
       <y>0</y>
       <width>839</width>
-      <height>179</height>
+      <height>129</height>
      </rect>
     </property>
     <widget class="QTableWidget" name="table_preview">
@@ -278,7 +281,7 @@
        <x>0</x>
        <y>0</y>
        <width>841</width>
-       <height>181</height>
+       <height>131</height>
       </rect>
      </property>
     </widget>
@@ -288,7 +291,7 @@
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>500</y>
+     <y>580</y>
      <width>93</width>
      <height>29</height>
     </rect>
@@ -417,14 +420,184 @@
    <property name="geometry">
     <rect>
      <x>180</x>
-     <y>510</y>
-     <width>63</width>
+     <y>590</y>
+     <width>201</width>
      <height>20</height>
     </rect>
    </property>
    <property name="text">
     <string>Status: </string>
    </property>
+  </widget>
+  <widget class="QLineEdit" name="text_output">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>530</y>
+     <width>241</width>
+     <height>26</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>Folder or output Layers</string>
+   </property>
+   <property name="text">
+    <string>path</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="button_output">
+   <property name="geometry">
+    <rect>
+     <x>280</x>
+     <y>530</y>
+     <width>93</width>
+     <height>29</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Select Dir...</string>
+   </property>
+  </widget>
+  <widget class="QDoubleSpinBox" name="spin_schwimmer_offset">
+   <property name="geometry">
+    <rect>
+     <x>510</x>
+     <y>400</y>
+     <width>141</width>
+     <height>26</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Z2 Offset [m]: Abstand Wasseroberfläche Schwimmerunterkante&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="decimals">
+    <number>4</number>
+   </property>
+   <property name="minimum">
+    <double>0.000000000000000</double>
+   </property>
+   <property name="maximum">
+    <double>5.000000000000000</double>
+   </property>
+   <property name="singleStep">
+    <double>0.010000000000000</double>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_7">
+   <property name="geometry">
+    <rect>
+     <x>510</x>
+     <y>370</y>
+     <width>221</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Z2 Offset / Schwimmerteife [m]</string>
+   </property>
+  </widget>
+  <widget class="QDoubleSpinBox" name="spin_ant_offset">
+   <property name="geometry">
+    <rect>
+     <x>510</x>
+     <y>330</y>
+     <width>141</width>
+     <height>26</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Z1 Offset [m]: Abstand GPS Antenne Wasseroberfläche (wenn als Tiefe eine absolute Höhe gewählt wird)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="decimals">
+    <number>4</number>
+   </property>
+   <property name="minimum">
+    <double>0.000000000000000</double>
+   </property>
+   <property name="maximum">
+    <double>5.000000000000000</double>
+   </property>
+   <property name="singleStep">
+    <double>0.010000000000000</double>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_8">
+   <property name="geometry">
+    <rect>
+     <x>510</x>
+     <y>300</y>
+     <width>211</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Z1 Offset / Antennenhoehe [m]</string>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="check_zero">
+   <property name="geometry">
+    <rect>
+     <x>450</x>
+     <y>150</y>
+     <width>191</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Punkte deren x, y, oder z Wert 0 ist, ausschließen&lt;/p&gt;&lt;p&gt;Liste aller kaputten files wird im Layerordner gespeichert. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="text">
+    <string>Exclued x || Y || z = 0 points</string>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lable_zero">
+   <property name="geometry">
+    <rect>
+     <x>470</x>
+     <y>590</y>
+     <width>221</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Found zerodata: </string>
+   </property>
+  </widget>
+  <widget class="QScrollArea" name="scrollArea_2">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>780</y>
+     <width>841</width>
+     <height>131</height>
+    </rect>
+   </property>
+   <property name="widgetResizable">
+    <bool>true</bool>
+   </property>
+   <widget class="QWidget" name="scrollAreaWidgetContents_2">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>839</width>
+      <height>129</height>
+     </rect>
+    </property>
+    <widget class="QTextEdit" name="table_console">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>841</width>
+       <height>131</height>
+      </rect>
+     </property>
+    </widget>
+   </widget>
   </widget>
  </widget>
  <resources/>

@@ -33,8 +33,9 @@ from qgis.core import QgsProject
 # User
 from PyQt5.QtWidgets import QAction, QFileDialog, QTableWidgetItem
 import glob, os
-from qgis.core import QgsVectorLayer, QgsField, QgsGeometry, QgsFeature, QgsPointXY
+from qgis.core import QgsVectorLayer, QgsField, QgsFields, QgsGeometry, QgsFeature, QgsPointXY, QgsWkbTypes, QgsVectorFileWriter, QgsCoordinateReferenceSystem
 from PyQt5.QtCore import QVariant
+from qgis.utils import iface
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -56,6 +57,8 @@ class XYZ_Importer:
     glob_fy = 1
     glob_fz = 2
     glob_fm = 3
+    glob_outfolder = ""
+    glob_zerocheck = FALSE
     
 
 
@@ -206,17 +209,17 @@ class XYZ_Importer:
     def getOptions(self):
         if self.dlg.check_all.isChecked():
             self.glob_layers_all = TRUE
-            print("All True")
+            #print("All True")
         else:
             self.glob_layers_all = FALSE  
-            print("All False")
+            #print("All False")
 
         if self.dlg.check_seperate.isChecked():
             self.glob_layers_sep = TRUE
-            print("Sep True")
+            #print("Sep True")
         else:
             self.glob_layers_sep = FALSE  
-            print("Sep False")
+            #print("Sep False")
         
         if self.dlg.check_tab.isChecked():
             self.glob_seperator = '\t'
@@ -228,18 +231,24 @@ class XYZ_Importer:
             self.glob_seperator = ':'
         if self.dlg.check_komma.isChecked():
             self.glob_seperator = ','
+        if self.dlg.check_zero.isChecked():
+            self.glob_zerocheck = TRUE
           
+    def selectOUTFolder(self):
+        foldername = QFileDialog.getExistingDirectory(self.dlg, "Select output folder ", "", QFileDialog.ShowDirsOnly)
+        self.dlg.text_output.setText(foldername)
+        self.glob_outfolder = foldername
 
     def selectFolder(self):
         #filename, _filter = QFileDialog.getSaveFileName(self.dlg, "Select output file ", "", '*.xyz')
         self.getOptions()
-        foldername = QFileDialog.getExistingDirectory(self.dlg, "Select output file ", "", QFileDialog.ShowDirsOnly)
+        foldername = QFileDialog.getExistingDirectory(self.dlg, "Select input folder ", "", QFileDialog.ShowDirsOnly)
         self.dlg.tex_path.setText(foldername)
         f = []
         ext = self.dlg.text_extension.text()
         os.chdir(foldername)
         for file in glob.glob("*."+ext): 
-            print(file)
+            #print(file)
             self.glob_filelist.append(file)
         
         if len(self.glob_filelist) > 0:
@@ -268,7 +277,7 @@ class XYZ_Importer:
                 #for i in range(siz):
                 #    self.dlg.table_preview.setItem(count,i,QTableWidgetItem(parts[i]))
                 count += 1
-                print(line)
+                #print(line)
 
                 if count == 10:
                     break
@@ -293,69 +302,145 @@ class XYZ_Importer:
                 self.dlg.table_preview.setItem(count,3,QTableWidgetItem(parts[self.glob_fm]))
                 count += 1
 
+      
+
+    def populateEPSGcombo(self):
+        self.dlg.combo_system.clear()
+        ep = QSettings().value('UI/recentProjectionsAuthId')
+        for i in range(len(ep)):
+            self.dlg.combo_system.addItem(ep[i])
+
     def makeAllLayer(self):
         prefix = self.dlg.text_prefix.text()
-        mainlayer = QgsVectorLayer("Point", prefix+"_AllXYZdata", "memory")
-        mainpr = mainlayer.dataProvider()
-        mainpr.addAttributes([QgsField("PID", QVariant.Int ),
-                            QgsField("Filename", QVariant.String),
-                            QgsField("X", QVariant.Double),
-                            QgsField("Y", QVariant.Double),
-                            QgsField("Z", QVariant.Double),
-                            QgsField("M", QVariant.Double)])
-        mainlayer.updateFields()
+        ant_offset = float(self.dlg.spin_ant_offset.value())
+        swm_offset = float(self.dlg.spin_schwimmer_offset.value())
+        path_a = self.glob_outfolder+"/"
+        path = path_a+prefix+"_AllXYZdata"+".shp"
+        logpath = path_a+"wrongFileLog.txt"
+        epsg = self.dlg.combo_system.currentText()
+        zerocounter = 0
+        prezerofile = ""
+        logfile =  open(logpath, 'w')
+        #mainlayer = QgsVectorLayer("Point?crs=epsg:4326", prefix+"_AllXYZdata", "memory")
+        #mainpr = mainlayer.dataProvider()
+        layerFields = QgsFields()
+        layerFields.append(QgsField("PID", QVariant.Int ))
+        layerFields.append(QgsField("Filename", QVariant.String ))
+        layerFields.append(QgsField("X", QVariant.Double ))
+        layerFields.append(QgsField("Y", QVariant.Double ))
+        layerFields.append(QgsField("Z", QVariant.Double ))
+        layerFields.append(QgsField("Ant_offs", QVariant.Double ))
+        layerFields.append(QgsField("Sens_offs", QVariant.Double ))
+        layerFields.append(QgsField("Calc_Z", QVariant.Double ))
+        layerFields.append(QgsField("M", QVariant.Double ))
+
+        writer = QgsVectorFileWriter(path, 'UTF-8', layerFields, QgsWkbTypes.Point, QgsCoordinateReferenceSystem(epsg), 'ESRI Shapefile')
+
+        
         if len(self.glob_filelist) > 0:
             for i in range(len(self.glob_filelist)):
                 file = open(self.glob_filelist[i], 'r')
                 Lines = file.readlines()
                 count = 0
                 for line in Lines:
+                    fut = QgsFeature()
                     parts = line.split(self.glob_seperator)
                     f = QgsFeature()
                     x = float(parts[self.glob_fx])
                     y = float(parts[self.glob_fy])
-                    f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
-                    f.setAttributes([count, self.glob_filelist[i], float(parts[self.glob_fx]), float(parts[self.glob_fy]), float(parts[self.glob_fz]), float(parts[self.glob_fm])])
-                    mainpr.addFeature(f)
-                    count += 1 
-            mainlayer.updateExtents() 
-            QgsProject.instance().addMapLayer(mainlayer)             
-
+                    z = float(parts[self.glob_fz])
+                    zcalc = float(parts[self.glob_fz])+swm_offset
+                    m = float(parts[self.glob_fm])-ant_offset
+                    if self.glob_zerocheck == TRUE: 
+                        if x!=0 and y!=0 and z!=0:
+                            fut.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
+                            fut.setAttributes([count, self.glob_filelist[i], x, y, z, ant_offset, swm_offset, zcalc, m])
+                            writer.addFeature(fut)
+                            count += 1
+                        else:
+                            zerocounter += 1
+                            
+                            if self.glob_filelist[i] != prezerofile: 
+                                self.dlg.table_console.append("[ALL] "+self.glob_filelist[i])
+                                logfile.write(self.glob_filelist[i]+"\r\n")
+                            prezerofile = self.glob_filelist[i]
+                    else:
+                        fut.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
+                        fut.setAttributes([count, self.glob_filelist[i], x, y, z, ant_offset, swm_offset, zcalc, m])
+                        writer.addFeature(fut)
+                        count += 1 
+            layer = iface.addVectorLayer(path, '', 'ogr')
+            del(writer)
+            #QgsProject.instance().addMapLayer(mainlayer) 
+            self.dlg.table_console.append("[ALL] Layerpath: "+path)
+            self.dlg.lable_zero.setText("Found Zero: "+str(zerocounter))
+            logfile.close
+            #writer = QgsVectorFileWriter(path,mainpr.encoding(), mainpr.fields(), QgsWkbTypes.Polygon, mainpr.crs())  
+    
+    
+    
     def makeSingleLayers(self):
         prefix = self.dlg.text_prefix.text()
+        ant_offset = float(self.dlg.spin_ant_offset.value())
+        swm_offset = float(self.dlg.spin_schwimmer_offset.value())
+        epsg = self.dlg.combo_system.currentText()
+        zerocounter = 0
+        #mainlayer = QgsVectorLayer("Point?crs=epsg:4326", prefix+"_AllXYZdata", "memory")
+        #mainpr = mainlayer.dataProvider()
+        layerFields = QgsFields()
+        layerFields.append(QgsField("PID", QVariant.Int ))
+        layerFields.append(QgsField("Filename", QVariant.String ))
+        layerFields.append(QgsField("X", QVariant.Double ))
+        layerFields.append(QgsField("Y", QVariant.Double ))
+        layerFields.append(QgsField("Z", QVariant.Double ))
+        layerFields.append(QgsField("Ant_offs", QVariant.Double ))
+        layerFields.append(QgsField("Sens_offs", QVariant.Double ))
+        layerFields.append(QgsField("Calc_Z", QVariant.Double ))
+        layerFields.append(QgsField("M", QVariant.Double ))
         root = QgsProject.instance().layerTreeRoot()
         myGroup = root.addGroup(prefix)  
+
         if len(self.glob_filelist) > 0:
             for i in range(len(self.glob_filelist)):
-                layer = QgsVectorLayer("Point", prefix+"_"+self.glob_filelist[i], "memory")
-                pr = layer.dataProvider()
-                pr.addAttributes([QgsField("PID", QVariant.Int),
-                            QgsField("Filename", QVariant.String),
-                            QgsField("X", QVariant.Double),
-                            QgsField("Y", QVariant.Double),
-                            QgsField("Z", QVariant.Double),
-                            QgsField("M", QVariant.Double)])
-                layer.updateFields()
+                path = self.glob_outfolder+"/"+prefix+"_"+self.glob_filelist[i]+".shp"
+                writer = QgsVectorFileWriter(path, 'UTF-8', layerFields, QgsWkbTypes.Point, QgsCoordinateReferenceSystem(epsg), 'ESRI Shapefile')
+                
                 file = open(self.glob_filelist[i], 'r')
                 Lines = file.readlines()
                 count = 0
                 for line in Lines:
                     parts = line.split(self.glob_seperator)
-                    f = QgsFeature()
+                    fut = QgsFeature()
                     x = float(parts[self.glob_fx])
                     y = float(parts[self.glob_fy])
-                    f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
-                    f.setAttributes([count, self.glob_filelist[i], float(parts[self.glob_fx]), float(parts[self.glob_fy]), float(parts[self.glob_fz]), float(parts[self.glob_fm])])
-                    pr.addFeature(f)
-                    count += 1 
-                layer.updateExtents() 
+                    z = float(parts[self.glob_fz])
+                    zcalc = float(parts[self.glob_fz])+swm_offset
+                    m = float(parts[self.glob_fm])-ant_offset
+                    if self.glob_zerocheck == TRUE: 
+                        if x!=0 and y!=0 and z!=0:
+                            fut.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
+                            fut.setAttributes([count, self.glob_filelist[i], x, y, z, ant_offset, swm_offset, zcalc, m])
+                            writer.addFeature(fut)
+                            count += 1
+                        else:
+                            zerocounter +=1
+                            #self.dlg.table_console.append("[SINGLE] "+self.glob_filelist[i])
+                    else:
+                            fut.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
+                            fut.setAttributes([count, self.glob_filelist[i], x, y, z, ant_offset, swm_offset, zcalc, m])
+                            writer.addFeature(fut)
+                            count += 1
+                layer = iface.addVectorLayer(path, '', 'ogr')
+                del(writer)
                 QgsProject.instance().addMapLayer(layer)   
                 root = QgsProject.instance().layerTreeRoot()
                 layerX = root.findLayer(layer.id())
                 clone = layerX.clone()
                 myGroup.insertChildNode(0, clone)
                 root.removeChildNode(layerX)
-    
+            self.dlg.table_console.append("[SINGLE] Layerpath: "+path)
+            self.dlg.lable_zero.setText("Found Zero: "+str(zerocounter))
+
     def doMainAction(self):
         self.dlg.lable_status.setText("Status: working...")
         print("Make Layers")
@@ -380,6 +465,8 @@ class XYZ_Importer:
             self.dlg.button_select.clicked.connect(self.selectFolder)
             self.dlg.button_show.clicked.connect(self.showPreview)
             self.dlg.button_go.clicked.connect(self.doMainAction)
+            self.dlg.button_output.clicked.connect(self.selectOUTFolder)
+            self.populateEPSGcombo()
 
         # show the dialog
         self.dlg.show()
@@ -408,3 +495,78 @@ class XYZ_Importer:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass
+
+
+    # def makeAllLayer(self):
+    #     prefix = self.dlg.text_prefix.text()
+    #     ant_offset = float(self.dlg.spin_ant_offset.value())
+    #     swm_offset = float(self.dlg.spin_schwimmer_offset.value())
+    #     mainlayer = QgsVectorLayer("Point?crs=epsg:4326", prefix+"_AllXYZdata", "memory")
+    #     mainpr = mainlayer.dataProvider()
+    #     mainpr.addAttributes([QgsField("PID", QVariant.Int ),
+    #                         QgsField("Filename", QVariant.String),
+    #                         QgsField("X", QVariant.Double),
+    #                         QgsField("Y", QVariant.Double),
+    #                         QgsField("Z", QVariant.Double),
+    #                         QgsField("M", QVariant.Double)])
+    #     mainlayer.updateFields()
+    #     if len(self.glob_filelist) > 0:
+    #         for i in range(len(self.glob_filelist)):
+    #             file = open(self.glob_filelist[i], 'r')
+    #             Lines = file.readlines()
+    #             count = 0
+    #             for line in Lines:
+    #                 parts = line.split(self.glob_seperator)
+    #                 f = QgsFeature()
+    #                 x = float(parts[self.glob_fx])
+    #                 y = float(parts[self.glob_fy])
+    #                 z = float(parts[self.glob_fz])+swm_offset
+    #                 m = float(parts[self.glob_fm])-ant_offset
+    #                 f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
+    #                 f.setAttributes([count, self.glob_filelist[i], x, y, z, m])
+    #                 mainpr.addFeature(f)
+    #                 count += 1 
+    #         mainlayer.updateExtents() 
+    #         QgsProject.instance().addMapLayer(mainlayer) 
+    #         path = self.glob_outfolder+"/"+prefix+"_AllXYZdata"+".shp"
+    #         print("Layerpath: "+path)  
+    #         writer = QgsVectorFileWriter(path,mainpr.encoding(), mainpr.fields(), QgsWkbTypes.Polygon, mainpr.crs())  
+
+
+    # def makeSingleLayers(self):
+    #     prefix = self.dlg.text_prefix.text()
+    #     root = QgsProject.instance().layerTreeRoot()
+    #     myGroup = root.addGroup(prefix)  
+    #     if len(self.glob_filelist) > 0:
+    #         for i in range(len(self.glob_filelist)):
+    #             layer = QgsVectorLayer("Point", prefix+"_"+self.glob_filelist[i], "memory")
+    #             pr = layer.dataProvider()
+    #             pr.addAttributes([QgsField("PID", QVariant.Int),
+    #                         QgsField("Filename", QVariant.String),
+    #                         QgsField("X", QVariant.Double),
+    #                         QgsField("Y", QVariant.Double),
+    #                         QgsField("Z", QVariant.Double),
+    #                         QgsField("Ant_offs", QVariant.Double),
+    #                         QgsField("Sens_offs", QVariant.Double),
+    #                         QgsField("Calc_Z", QVariant.Double),
+    #                         QgsField("M", QVariant.Double)])
+    #             layer.updateFields()
+    #             file = open(self.glob_filelist[i], 'r')
+    #             Lines = file.readlines()
+    #             count = 0
+    #             for line in Lines:
+    #                 parts = line.split(self.glob_seperator)
+    #                 f = QgsFeature()
+    #                 x = float(parts[self.glob_fx])
+    #                 y = float(parts[self.glob_fy])
+    #                 f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
+    #                 f.setAttributes([count, self.glob_filelist[i], float(parts[self.glob_fx]), float(parts[self.glob_fy]), float(parts[self.glob_fz]), float(parts[self.glob_fm])])
+    #                 pr.addFeature(f)
+    #                 count += 1 
+    #             layer.updateExtents() 
+    #             QgsProject.instance().addMapLayer(layer)   
+    #             root = QgsProject.instance().layerTreeRoot()
+    #             layerX = root.findLayer(layer.id())
+    #             clone = layerX.clone()
+    #             myGroup.insertChildNode(0, clone)
+    #             root.removeChildNode(layerX)
